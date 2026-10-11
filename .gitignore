@@ -1,0 +1,33 @@
+# 构建树与编译产物 (cmake 重新生成)
+build-core/
+build/
+lib/*.pyd
+lib/*.so
+
+# 本地运行环境与大模型权重 (自行部署, 见 README)
+vlm_env/
+vlm_models/
+
+# 实验数据与产物 (本地保留, 不入库)
+runs/
+视频抽帧_*/
+汇报对比图_*/
+论文材料_*/
+
+# 一次性分析脚本与日志
+_video_*.py
+scratch_*.py
+*.log
+
+# 内部研究文档 (本地保留)
+农田边界语义建图方案_*.md
+地头数据集分析档案_*.md
+地头数据集标注_*.json
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# 系统
+.DS_Store
