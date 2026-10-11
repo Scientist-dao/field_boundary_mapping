@@ -11,9 +11,9 @@ import cv2
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from run_offline import VideoReader, run, sample_requests, write_json
-from sam3_local import offline_runtime
-from semantic_pipeline import analyze_frame, interface_polylines, load_core, mask_contours
+from field_boundary_mapping.proposals.run_offline import VideoReader, run, sample_requests, write_json
+from field_boundary_mapping.perception.sam3_local import offline_runtime
+from field_boundary_mapping.semantic_pipeline import analyze_frame, interface_polylines, load_core, mask_contours
 
 
 class PipelineTests(unittest.TestCase):
@@ -161,8 +161,8 @@ class PipelineTests(unittest.TestCase):
             args = argparse.Namespace(
                 weights=weights, output=root / "out", confidence=0.3, device="cpu", threads=1, clip_dir=None,
             )
-            with patch("run_offline.sample_requests", return_value=[(video, 0, "synthetic-f0")]), \
-                 patch("run_offline.LocalSAM3") as model, patch("run_offline.VideoReader") as reader:
+            with patch("field_boundary_mapping.proposals.run_offline.sample_requests", return_value=[(video, 0, "synthetic-f0")]), \
+                 patch("field_boundary_mapping.proposals.run_offline.LocalSAM3") as model, patch("field_boundary_mapping.proposals.run_offline.VideoReader") as reader:
                 model.return_value.metadata = {"backend": "synthetic-test-only"}
                 model.return_value.predict.return_value = ([], {"total_seconds": 0})
                 reader.return_value.read_second.return_value = (self.image, 5, 0.5)

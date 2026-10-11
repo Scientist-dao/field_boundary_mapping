@@ -18,7 +18,8 @@ from urllib.parse import quote
 import zlib
 
 
-VIEWER_PATH = Path(__file__).resolve().parents[1] / "review_results.py"
+VIEWER_PATH = (Path(__file__).resolve().parents[1] / "field_boundary_mapping"
+               / "evidence" / "review_results.py")
 SPEC = importlib.util.spec_from_file_location("review_results_under_test", VIEWER_PATH)
 viewer = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(viewer)

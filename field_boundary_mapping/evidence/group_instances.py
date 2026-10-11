@@ -23,10 +23,10 @@ from pathlib import Path
 
 import numpy as np
 
-from analyze_instance_conflicts import load_frame
-from run_offline import write_json
+from field_boundary_mapping.evidence.analyze_instance_conflicts import load_frame
+from field_boundary_mapping.proposals.run_offline import write_json
 
-BASE = Path(__file__).resolve().parent
+BASE = Path(__file__).resolve().parents[2]   # 仓库根
 
 DUPLICATE_IOU = 0.95
 CONTAINMENT_FRACTION = 0.95

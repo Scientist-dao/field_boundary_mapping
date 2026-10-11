@@ -7,12 +7,12 @@ import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from scene_staging import (
+from field_boundary_mapping.scene.scene_staging import (
     CATALOGUE_INSTRUCTION, LOCALIZATION_INSTRUCTION, STAGED_VERSION,
     assemble_scene, localization_audit, localization_instruction,
     parse_catalogue, parse_localization,
 )
-from scene_understanding import BOUNDARY_TYPES, GATES, RELATIONS, ROLES, SURFACES, parse_scene
+from field_boundary_mapping.scene.scene_understanding import BOUNDARY_TYPES, GATES, RELATIONS, ROLES, SURFACES, parse_scene
 
 
 def sample_catalogue():
@@ -389,7 +389,7 @@ class AssemblyAndAuditTests(unittest.TestCase):
         localization["regions"].reverse()
         localization["boundaries"].reverse()
         before = copy.deepcopy((catalogue, localization))
-        with patch("scene_staging.parse_scene", wraps=parse_scene) as validator:
+        with patch("field_boundary_mapping.scene.scene_staging.parse_scene", wraps=parse_scene) as validator:
             scene = assemble_scene(catalogue, localization)
         validator.assert_called_once()
         self.assertEqual(json.loads(validator.call_args.args[0]), scene)

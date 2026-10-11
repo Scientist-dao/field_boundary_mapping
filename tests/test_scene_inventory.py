@@ -8,14 +8,14 @@ import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-import scene_staging
-from scene_staging import (
+from field_boundary_mapping.scene import scene_staging
+from field_boundary_mapping.scene.scene_staging import (
     ASSIGNMENT_INSTRUCTION, CATALOGUE_INSTRUCTION, INVENTORY_INSTRUCTION,
     INVENTORY_VERSION, LOCALIZATION_INSTRUCTION, STAGED_VERSION,
     assignment_instruction, bind_inventory, parse_assignments, parse_catalogue,
     parse_inventory,
 )
-from scene_understanding import BOUNDARY_TYPES, RELATIONS, ROLES, SURFACES
+from field_boundary_mapping.scene.scene_understanding import BOUNDARY_TYPES, RELATIONS, ROLES, SURFACES
 
 
 def sample_inventory():
@@ -391,8 +391,8 @@ class BindingTests(ValidationTestCase):
         inventory, assignments = sample_inventory(), sample_assignments()
         assignments["assignments"].reverse()
         before = copy.deepcopy(assignments)
-        with patch("scene_staging._load_json", return_value=assignments) as loader:
-            with patch("scene_staging.bind_inventory", wraps=bind_inventory) as binder:
+        with patch("field_boundary_mapping.scene.scene_staging._load_json", return_value=assignments) as loader:
+            with patch("field_boundary_mapping.scene.scene_staging.bind_inventory", wraps=bind_inventory) as binder:
                 parsed = parse_assignments("response", inventory)
         self.assertIs(parsed, assignments)
         self.assertEqual(parsed, before)
@@ -400,9 +400,9 @@ class BindingTests(ValidationTestCase):
         binder.assert_called_once_with(inventory, assignments)
 
     def test_catalogue_validator_used_without_fake_geometry(self):
-        with patch("scene_staging._validate_catalogue", wraps=scene_staging._validate_catalogue) as validator:
-            with patch("scene_staging.parse_scene", side_effect=AssertionError("Scene geometry is not available")):
-                with patch("scene_staging._polygon", side_effect=AssertionError("No invented polygons")):
+        with patch("field_boundary_mapping.scene.scene_staging._validate_catalogue", wraps=scene_staging._validate_catalogue) as validator:
+            with patch("field_boundary_mapping.scene.scene_staging.parse_scene", side_effect=AssertionError("Scene geometry is not available")):
+                with patch("field_boundary_mapping.scene.scene_staging._polygon", side_effect=AssertionError("No invented polygons")):
                     catalogue = bind_inventory(sample_inventory(), sample_assignments())
                     self.assertEqual(parse_assignments(json.dumps(sample_assignments()), sample_inventory()), sample_assignments())
         self.assertEqual(validator.call_count, 2)

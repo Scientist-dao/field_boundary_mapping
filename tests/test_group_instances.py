@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from group_instances import (
+from field_boundary_mapping.evidence.group_instances import (
     aggregate_frames, build_json_payload, group_frame, same_object, UnionFind,
 )
 

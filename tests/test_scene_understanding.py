@@ -12,13 +12,13 @@ import cv2
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from cloud_vlm_proposer import DEFAULT_API_KEY_ENV, DEFAULT_BASE_URL
-from review_results import ResultStore
-from run_offline import file_hash, write_json
-from run_scene_understanding import (
+from field_boundary_mapping.perception.cloud_vlm_proposer import DEFAULT_API_KEY_ENV, DEFAULT_BASE_URL
+from field_boundary_mapping.evidence.review_results import ResultStore
+from field_boundary_mapping.proposals.run_offline import file_hash, write_json
+from field_boundary_mapping.scene.run_scene_understanding import (
     check_identity, check_record, instruction_for, load_scene_run, main, run, select_context, source_frames,
 )
-from scene_understanding import (GATES, INSTRUCTIONS, PROMPT_VERSION, parse_scene, pixel_points,
+from field_boundary_mapping.scene.scene_understanding import (GATES, INSTRUCTIONS, PROMPT_VERSION, parse_scene, pixel_points,
                                  region_geometry_kind, region_outline, scene_queries)
 
 
@@ -329,7 +329,7 @@ class SceneRunTests(unittest.TestCase):
         self.frames[2]["annotation_reference"] = {"secret_stage": "never-send-this"}
         self.save_source()
         args = self.args()
-        with patch("run_scene_understanding.CloudVLM") as model:
+        with patch("field_boundary_mapping.scene.run_scene_understanding.CloudVLM") as model:
             model.return_value.ask_images.return_value = self.response
             manifest = run(args)
             sent, instruction = model.return_value.ask_images.call_args.args
@@ -356,7 +356,7 @@ class SceneRunTests(unittest.TestCase):
         raw = "\n" + json.dumps(self.scene, indent=2) + "\n"
         timing = {"finish_reason": "stop", "model": "fake-provider"}
         response_format = {"type": "json_object"}
-        with patch("run_scene_understanding.CloudVLM", autospec=True) as model:
+        with patch("field_boundary_mapping.scene.run_scene_understanding.CloudVLM", autospec=True) as model:
             model.return_value.ask_images.return_value = (raw, timing)
             manifest = run(args)
             calls = model.return_value.ask_images.call_args_list
@@ -379,7 +379,7 @@ class SceneRunTests(unittest.TestCase):
 
     def test_legacy_text_archives_load_without_adding_format_or_changing_bytes(self):
         args = self.args()
-        with patch("run_scene_understanding.CloudVLM") as model:
+        with patch("field_boundary_mapping.scene.run_scene_understanding.CloudVLM") as model:
             model.return_value.ask_images.return_value = self.response
             original_manifest = run(args)
         record_path = args.output / "f2.json"
@@ -408,7 +408,7 @@ class SceneRunTests(unittest.TestCase):
                 self.assertEqual(before, {p.name: p.read_bytes() for p in args.output.iterdir()})
 
     def test_single_frame_run_uses_exactly_one_image(self):
-        with patch("run_scene_understanding.CloudVLM") as model:
+        with patch("field_boundary_mapping.scene.run_scene_understanding.CloudVLM") as model:
             model.return_value.ask_images.return_value = self.response
             run(self.args(mode="single"))
             self.assertEqual(len(model.return_value.ask_images.call_args.args[0]), 1)
@@ -416,7 +416,7 @@ class SceneRunTests(unittest.TestCase):
     def test_each_prompt_version_is_sent_and_loadable_without_changing_archives(self):
         for version, instruction in INSTRUCTIONS.items():
             args = self.args(prompt_version=version, output=self.root / version)
-            with self.subTest(version=version), patch("run_scene_understanding.CloudVLM") as model:
+            with self.subTest(version=version), patch("field_boundary_mapping.scene.run_scene_understanding.CloudVLM") as model:
                 model.return_value.ask_images.return_value = self.response
                 manifest = run(args)
                 self.assertTrue(model.return_value.ask_images.call_args.args[1].startswith(instruction))
@@ -428,11 +428,11 @@ class SceneRunTests(unittest.TestCase):
 
     def test_prompt_switch_cannot_resume_or_relabel_existing_run(self):
         args = self.args(prompt_version="functional-scene-v1")
-        with patch("run_scene_understanding.CloudVLM") as model:
+        with patch("field_boundary_mapping.scene.run_scene_understanding.CloudVLM") as model:
             model.return_value.ask_images.return_value = self.response
             run(args)
         args.resume, args.prompt_version = True, "functional-scene-v2"
-        with patch("run_scene_understanding.CloudVLM") as model, self.assertRaises(ValueError):
+        with patch("field_boundary_mapping.scene.run_scene_understanding.CloudVLM") as model, self.assertRaises(ValueError):
             run(args)
         model.assert_not_called()
         manifest_path = args.output / "manifest.json"
@@ -448,13 +448,13 @@ class SceneRunTests(unittest.TestCase):
         for option in (None, "text", "json_object"):
             extra = [] if option is None else ["--response-format", option]
             with self.subTest(option=option), patch.object(sys, "argv", argv + extra), \
-                    patch("run_scene_understanding.run") as runner:
+                    patch("field_boundary_mapping.scene.run_scene_understanding.run") as runner:
                 main()
                 args = runner.call_args.args[0]
                 self.assertEqual(args.response_format, "text" if option is None else option)
                 self.assertEqual(args.prompt_version, "functional-scene-v1")
         with patch.object(sys, "argv", argv + ["--response-format", "json_schema"]), \
-                patch("sys.stderr"), patch("run_scene_understanding.run") as runner:
+                patch("sys.stderr"), patch("field_boundary_mapping.scene.run_scene_understanding.run") as runner:
             with self.assertRaises(SystemExit) as raised:
                 main()
             self.assertEqual(raised.exception.code, 2)
@@ -465,7 +465,7 @@ class SceneRunTests(unittest.TestCase):
                         {"timeout": 0}, {"timeout": 3601}, {"response_format": "json_schema"},
                         {"response_format": ""}, {"response_format": None},
                         {"response_format": {"type": "json_object"}}):
-            with self.subTest(changes=changes), patch("run_scene_understanding.CloudVLM") as model:
+            with self.subTest(changes=changes), patch("field_boundary_mapping.scene.run_scene_understanding.CloudVLM") as model:
                 with self.assertRaises(ValueError):
                     run(self.args(**changes))
                 model.assert_not_called()
@@ -474,14 +474,14 @@ class SceneRunTests(unittest.TestCase):
     def test_run_requires_response_format_argument(self):
         args = self.args()
         del args.response_format
-        with patch("run_scene_understanding.CloudVLM") as model:
+        with patch("field_boundary_mapping.scene.run_scene_understanding.CloudVLM") as model:
             with self.assertRaises(AttributeError):
                 run(args)
             model.assert_not_called()
         self.assertFalse(args.output.exists())
 
     def test_extended_timeout_is_passed_to_cloud_client(self):
-        with patch("run_scene_understanding.CloudVLM") as model:
+        with patch("field_boundary_mapping.scene.run_scene_understanding.CloudVLM") as model:
             model.return_value.ask_images.return_value = self.response
             run(self.args(timeout=1200))
             self.assertEqual(model.call_args.args[-1], 1200)
@@ -489,12 +489,12 @@ class SceneRunTests(unittest.TestCase):
     def test_resume_skips_api_and_preserves_response(self):
         for option in ("text", "json_object"):
             args = self.args(response_format=option, output=self.root / option)
-            with self.subTest(option=option), patch("run_scene_understanding.CloudVLM") as model:
+            with self.subTest(option=option), patch("field_boundary_mapping.scene.run_scene_understanding.CloudVLM") as model:
                 model.return_value.ask_images.return_value = self.response
                 run(args)
             raw_before = (args.output / "f2.json").read_bytes()
             args.resume = True
-            with patch("run_scene_understanding.CloudVLM") as model:
+            with patch("field_boundary_mapping.scene.run_scene_understanding.CloudVLM") as model:
                 run(args)
                 model.assert_not_called()
             self.assertEqual(raw_before, (args.output / "f2.json").read_bytes())
@@ -503,7 +503,7 @@ class SceneRunTests(unittest.TestCase):
         for option in ("text", "json_object"):
             for failed in (False, True):
                 args = self.args(response_format=option, output=self.root / f"{option}-{failed}")
-                with self.subTest(option=option, failed=failed), patch("run_scene_understanding.CloudVLM") as model:
+                with self.subTest(option=option, failed=failed), patch("field_boundary_mapping.scene.run_scene_understanding.CloudVLM") as model:
                     if failed:
                         model.return_value.ask_images.return_value = ("not json", {"finish_reason": "stop"})
                         with self.assertRaises(ValueError):
@@ -514,7 +514,7 @@ class SceneRunTests(unittest.TestCase):
                 before = {p.name: p.read_bytes() for p in args.output.iterdir()}
                 args.resume = True
                 args.response_format = "json_object" if option == "text" else "text"
-                with patch("run_scene_understanding.CloudVLM") as model:
+                with patch("field_boundary_mapping.scene.run_scene_understanding.CloudVLM") as model:
                     with self.assertRaisesRegex(ValueError, "Resume configuration mismatch"):
                         run(args)
                     model.assert_not_called()
@@ -523,7 +523,7 @@ class SceneRunTests(unittest.TestCase):
     def test_response_format_config_or_record_relabeling_is_rejected(self):
         for option, other_format in (("text", {"type": "json_object"}), ("json_object", None)):
             args = self.args(response_format=option, output=self.root / option)
-            with patch("run_scene_understanding.CloudVLM") as model:
+            with patch("field_boundary_mapping.scene.run_scene_understanding.CloudVLM") as model:
                 model.return_value.ask_images.return_value = self.response
                 original_manifest = run(args)
             record_path = args.output / "f2.json"
@@ -546,7 +546,7 @@ class SceneRunTests(unittest.TestCase):
                     before = {p.name: p.read_bytes() for p in args.output.iterdir()}
                     with self.assertRaisesRegex(ValueError, "response format"):
                         load_scene_run(self.source, args.output)
-                    with patch("run_scene_understanding.CloudVLM") as model:
+                    with patch("field_boundary_mapping.scene.run_scene_understanding.CloudVLM") as model:
                         with self.assertRaises(ValueError):
                             run(args)
                         model.assert_not_called()
@@ -554,7 +554,7 @@ class SceneRunTests(unittest.TestCase):
 
     def test_load_rejects_unsupported_format_even_when_record_and_config_agree(self):
         args = self.args()
-        with patch("run_scene_understanding.CloudVLM") as model:
+        with patch("field_boundary_mapping.scene.run_scene_understanding.CloudVLM") as model:
             model.return_value.ask_images.return_value = self.response
             manifest = run(args)
         record_path = args.output / "f2.json"
@@ -574,12 +574,12 @@ class SceneRunTests(unittest.TestCase):
 
     def test_interrupted_batch_recovers_orphan_successful_record(self):
         args = self.args(frames=["f2", "f3"])
-        with patch("run_scene_understanding.CloudVLM") as model:
+        with patch("field_boundary_mapping.scene.run_scene_understanding.CloudVLM") as model:
             model.return_value.ask_images.side_effect = [self.response, KeyboardInterrupt()]
             with self.assertRaises(KeyboardInterrupt):
                 run(args)
         args.resume = True
-        with patch("run_scene_understanding.CloudVLM") as model:
+        with patch("field_boundary_mapping.scene.run_scene_understanding.CloudVLM") as model:
             model.return_value.ask_images.return_value = self.response
             manifest = run(args)
             self.assertEqual(model.return_value.ask_images.call_count, 1)
@@ -587,7 +587,7 @@ class SceneRunTests(unittest.TestCase):
 
     def test_resume_refuses_changed_config_and_tampered_response(self):
         args = self.args()
-        with patch("run_scene_understanding.CloudVLM") as model:
+        with patch("field_boundary_mapping.scene.run_scene_understanding.CloudVLM") as model:
             model.return_value.ask_images.return_value = self.response
             run(args)
         args.resume = True
@@ -611,7 +611,7 @@ class SceneRunTests(unittest.TestCase):
             for index, (reason, response) in enumerate(responses):
                 output = self.root / f"bad-{option}-{index}"
                 with self.subTest(option=option, reason=reason, index=index), \
-                        patch("run_scene_understanding.CloudVLM") as model:
+                        patch("field_boundary_mapping.scene.run_scene_understanding.CloudVLM") as model:
                     model.return_value.ask_images.return_value = (response, {"finish_reason": reason})
                     with self.assertRaises(ValueError):
                         run(self.args(output=output, response_format=option))
@@ -632,7 +632,7 @@ class SceneRunTests(unittest.TestCase):
     def test_continue_on_failure_gives_every_frame_one_request_and_drops_failures(self):
         output = self.root / "partial"
         responses = [self.response, ("not json", {"finish_reason": "stop"}), self.response]
-        with patch("run_scene_understanding.CloudVLM", autospec=True) as model:
+        with patch("field_boundary_mapping.scene.run_scene_understanding.CloudVLM", autospec=True) as model:
             model.return_value.ask_images.side_effect = responses
             manifest = run(self.args(frames=["f0", "f1", "f2"], output=output, continue_on_failure=True))
         self.assertEqual(model.return_value.ask_images.call_count, 3)
@@ -649,12 +649,12 @@ class SceneRunTests(unittest.TestCase):
         self.assertTrue(all(item["scene"] == self.scene for item in items))
 
     def test_continue_on_failure_refuses_resume_and_a_run_without_any_scene_refuses_load(self):
-        with patch("run_scene_understanding.CloudVLM") as model:
+        with patch("field_boundary_mapping.scene.run_scene_understanding.CloudVLM") as model:
             with self.assertRaises(ValueError):
                 run(self.args(continue_on_failure=True, resume=True))
             model.assert_not_called()
         output = self.root / "all-failed"
-        with patch("run_scene_understanding.CloudVLM", autospec=True) as model:
+        with patch("field_boundary_mapping.scene.run_scene_understanding.CloudVLM", autospec=True) as model:
             model.return_value.ask_images.side_effect = [("not json", {"finish_reason": "stop"})] * 2
             manifest = run(self.args(frames=["f0", "f1"], output=output, continue_on_failure=True))
         self.assertEqual(manifest["failed_frame_ids"], ["f0", "f1"])
@@ -663,7 +663,7 @@ class SceneRunTests(unittest.TestCase):
 
     def test_completed_with_failures_accounting_is_replayed_on_load(self):
         output = self.root / "accounting"
-        with patch("run_scene_understanding.CloudVLM", autospec=True) as model:
+        with patch("field_boundary_mapping.scene.run_scene_understanding.CloudVLM", autospec=True) as model:
             model.return_value.ask_images.side_effect = [self.response, ("not json", {"finish_reason": "stop"})]
             manifest = run(self.args(frames=["f0", "f1"], output=output, continue_on_failure=True))
         for changes in ({"status": "completed"}, {"failed_frame_ids": []}, {"failed_frame_ids": ["f0"]}, {}):
@@ -687,7 +687,7 @@ class SceneRunTests(unittest.TestCase):
         scene["regions"][0]["polygon"] = [[0, 300, 500, 1000]]
         raw = json.dumps(scene)
         args = self.args(response_format="json_object")
-        with patch("run_scene_understanding.CloudVLM") as model:
+        with patch("field_boundary_mapping.scene.run_scene_understanding.CloudVLM") as model:
             model.return_value.ask_images.return_value = (raw, {"finish_reason": "stop"})
             with self.assertRaises(ValueError):
                 run(args)
@@ -705,7 +705,7 @@ class SceneRunTests(unittest.TestCase):
         scene = {"regions": [], "relations": [], "boundaries": [], "unknowns": ["Cannot see field"]}
         for option in ("text", "json_object"):
             args = self.args(response_format=option, output=self.root / option)
-            with self.subTest(option=option), patch("run_scene_understanding.CloudVLM") as model:
+            with self.subTest(option=option), patch("field_boundary_mapping.scene.run_scene_understanding.CloudVLM") as model:
                 model.return_value.ask_images.return_value = (json.dumps(scene), {"finish_reason": "stop"})
                 run(args)
             _, items = load_scene_run(self.source, args.output)
@@ -713,7 +713,7 @@ class SceneRunTests(unittest.TestCase):
 
     def test_source_hash_failure_stops_before_api(self):
         (self.source / "image1.png").write_bytes(b"changed")
-        with patch("run_scene_understanding.CloudVLM") as model:
+        with patch("field_boundary_mapping.scene.run_scene_understanding.CloudVLM") as model:
             with self.assertRaises(ValueError):
                 run(self.args())
             model.assert_not_called()
@@ -728,7 +728,7 @@ class SceneRunTests(unittest.TestCase):
 
     def test_resume_rejects_promoted_safety_gates(self):
         args = self.args()
-        with patch("run_scene_understanding.CloudVLM") as model:
+        with patch("field_boundary_mapping.scene.run_scene_understanding.CloudVLM") as model:
             model.return_value.ask_images.return_value = self.response
             run(args)
         manifest = json.loads((args.output / "manifest.json").read_bytes())
@@ -747,14 +747,14 @@ class SceneRunTests(unittest.TestCase):
         self.assertEqual((args.output / "sentinel").read_bytes(), b"keep")
 
     def test_rejects_unapproved_endpoint_without_api(self):
-        with patch("run_scene_understanding.CloudVLM") as model:
+        with patch("field_boundary_mapping.scene.run_scene_understanding.CloudVLM") as model:
             with self.assertRaises(ValueError):
                 run(self.args(base_url="https://provider.example/v1"))
             model.assert_not_called()
 
     def test_does_not_write_inside_source_run(self):
         output = self.source / "new-scenes"
-        with patch("run_scene_understanding.CloudVLM") as model:
+        with patch("field_boundary_mapping.scene.run_scene_understanding.CloudVLM") as model:
             with self.assertRaises(ValueError):
                 run(self.args(output=output))
             model.assert_not_called()
@@ -762,7 +762,7 @@ class SceneRunTests(unittest.TestCase):
 
     def test_network_failure_is_not_archived_as_valid_empty_scene(self):
         args = self.args()
-        with patch("run_scene_understanding.CloudVLM") as model:
+        with patch("field_boundary_mapping.scene.run_scene_understanding.CloudVLM") as model:
             model.return_value.ask_images.side_effect = RuntimeError("provider failure")
             with self.assertRaises(RuntimeError):
                 run(args)
@@ -773,13 +773,13 @@ class SceneRunTests(unittest.TestCase):
 
     def test_resume_retries_failed_frame_without_overwriting_failed_evidence(self):
         args = self.args(frames=["f2", "f3"])
-        with patch("run_scene_understanding.CloudVLM") as model:
+        with patch("field_boundary_mapping.scene.run_scene_understanding.CloudVLM") as model:
             model.return_value.ask_images.side_effect = [self.response, ("truncated", {"finish_reason": "length"})]
             with self.assertRaises(ValueError):
                 run(args)
         before = (args.output / "f3.json").read_bytes()
         args.resume = True
-        with patch("run_scene_understanding.CloudVLM") as model:
+        with patch("field_boundary_mapping.scene.run_scene_understanding.CloudVLM") as model:
             model.return_value.ask_images.return_value = self.response
             manifest = run(args)
             self.assertEqual(model.return_value.ask_images.call_count, 1)
@@ -788,7 +788,7 @@ class SceneRunTests(unittest.TestCase):
         self.assertEqual(manifest["failed_attempts"][0]["sha256"], hashlib.sha256(before).hexdigest())
         _, items = load_scene_run(self.source, args.output)
         self.assertEqual(len(items), 2)
-        with patch("run_scene_understanding.CloudVLM") as model:
+        with patch("field_boundary_mapping.scene.run_scene_understanding.CloudVLM") as model:
             run(args)
             model.assert_not_called()
         (args.output / "f3.attempt-0001.json").write_bytes(b"tampered")

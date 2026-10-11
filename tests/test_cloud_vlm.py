@@ -11,8 +11,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from cloud_vlm_proposer import CloudVLM, DEFAULT_API_KEY_ENV, run
-from vlm_proposer import INSTRUCTION
+from field_boundary_mapping.perception.cloud_vlm_proposer import CloudVLM, DEFAULT_API_KEY_ENV, run
+from field_boundary_mapping.perception.vlm_proposer import INSTRUCTION
 
 
 PROPOSALS_JSON = ('{"proposals": [{"semantic": "crop", "box_xyxy": [10, 20, 500, 900],'

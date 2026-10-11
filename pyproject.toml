@@ -1,0 +1,17 @@
+[project]
+name = "field-boundary-workspace"
+version = "0.1.0"
+description = "农田边界语义理解算法 (field_boundary_mapping)"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "numpy>=1.26",
+    "opencv-python>=4.9",
+    "requests>=2.31",
+    "pybind11>=2.12",
+]
+
+[tool.uv]
+# 本目录是"应用工作区"而非安装到环境的库:
+# uv 只管理依赖与 .venv, 代码以仓库根为工作目录通过
+# python -m field_boundary_mapping.<子包>.<模块> 运行
+package = false

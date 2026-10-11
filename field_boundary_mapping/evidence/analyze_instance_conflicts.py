@@ -22,9 +22,9 @@ from pathlib import Path
 
 import numpy as np
 
-from run_offline import write_json
+from field_boundary_mapping.proposals.run_offline import write_json
 
-BASE = Path(__file__).resolve().parent
+BASE = Path(__file__).resolve().parents[2]   # 仓库根
 
 DUPLICATE_IOU = 0.95
 CONFLICT_IOU = 0.5

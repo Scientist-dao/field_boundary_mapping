@@ -7,8 +7,8 @@ import unittest
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from fuse_metric import fuse
-from run_offline import write_json
+from field_boundary_mapping.evidence.fuse_metric import fuse
+from field_boundary_mapping.proposals.run_offline import write_json
 
 
 class MetricReplayTests(unittest.TestCase):

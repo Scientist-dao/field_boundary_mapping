@@ -3,20 +3,21 @@ import hashlib
 import json
 from pathlib import Path
 
-from cloud_vlm_proposer import CloudVLM, DEFAULT_API_KEY_ENV, DEFAULT_BASE_URL, DEFAULT_TIMEOUT
-from review_results import ResultStore
-from run_offline import file_hash, write_json
-from run_proposals import identifier
-from run_scene_understanding import prepare_contexts, read_frame, source_frames
-from scene_staging import (ASSIGNMENT_INSTRUCTION, CATALOGUE_INSTRUCTION, INVENTORY_INSTRUCTION,
+from field_boundary_mapping.perception.cloud_vlm_proposer import CloudVLM, DEFAULT_API_KEY_ENV, DEFAULT_BASE_URL, DEFAULT_TIMEOUT
+from field_boundary_mapping.evidence.review_results import ResultStore
+from field_boundary_mapping.proposals.run_offline import file_hash, write_json
+from field_boundary_mapping.proposals.run_proposals import identifier
+from field_boundary_mapping.scene.run_scene_understanding import prepare_contexts, read_frame, source_frames
+from field_boundary_mapping.scene.scene_staging import (ASSIGNMENT_INSTRUCTION, CATALOGUE_INSTRUCTION, INVENTORY_INSTRUCTION,
                            INVENTORY_VERSION, LOCALIZATION_INSTRUCTION, STAGED_VERSION,
                            assemble_scene, assignment_instruction, bind_inventory, localization_audit,
                            localization_instruction, parse_assignments, parse_catalogue,
                            parse_inventory, parse_localization)
-from scene_understanding import GATES
+from field_boundary_mapping.scene.scene_understanding import GATES
 
 
-BASE = Path(__file__).resolve().parent
+BASE = Path(__file__).resolve().parents[2]   # 仓库根
+PKG = BASE / "field_boundary_mapping"        # Python 包根
 RUN_SCHEMA = "field_functional_scene_staged_run_v1"
 RECORD_SCHEMA = "field_functional_scene_staged_record_v1"
 RESPONSE_FORMAT = {"type": "json_object"}
@@ -131,9 +132,11 @@ def run(args):
         "max_output_tokens": args.max_output_tokens, "response_format": RESPONSE_FORMAT, "strict_content": True,
         "target_frames": args.frames, "source_manifest_sha256": file_hash(store.resolve("manifest.json")),
         "template_sha256": templates,
-        "implementation_sha256": {name: file_hash(BASE / name) for name in (
-            "scene_staging.py", "run_staged_scene.py", "scene_understanding.py",
-            "run_scene_understanding.py", "cloud_vlm_proposer.py")},
+        "implementation_sha256": {path.name: file_hash(path) for path in (
+            Path(__file__), PKG / "scene" / "scene_staging.py",
+            PKG / "scene" / "scene_understanding.py",
+            PKG / "scene" / "run_scene_understanding.py",
+            PKG / "perception" / "cloud_vlm_proposer.py")},
     }
     model = CloudVLM(DEFAULT_BASE_URL, args.model, DEFAULT_API_KEY_ENV, args.max_output_tokens, args.timeout)
     manifest = {"schema_version": RUN_SCHEMA, "configuration": configuration, "status": "running",

@@ -16,11 +16,11 @@ import argparse
 import json
 from pathlib import Path
 
-from group_instances import (
+from field_boundary_mapping.evidence.group_instances import (
     CONTAINMENT_AREA_RATIO, CONTAINMENT_FRACTION, DUPLICATE_IOU, group_frame,
 )
 
-BASE = Path(__file__).resolve().parent
+BASE = Path(__file__).resolve().parents[2]   # 仓库根
 
 HAZARD_SEMANTICS = {
     "vehicle": "vehicle",

@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from analyze_temporal_consistency import (
+from field_boundary_mapping.evidence.analyze_temporal_consistency import (
     build_chains, build_json_payload, chain_metrics, chain_units, iou,
     semantic_run_stats, units_from_groups,
 )

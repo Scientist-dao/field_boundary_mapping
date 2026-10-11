@@ -1,8 +1,8 @@
 from copy import deepcopy
 import json
 
-from run_proposals import fields, identifier
-from scene_understanding import (
+from field_boundary_mapping.proposals.run_proposals import fields, identifier
+from field_boundary_mapping.scene.scene_understanding import (
     BOUNDARY_TYPES, GATES, RELATIONS, ROLES, SURFACES,
     _enum, _list, _points, _polygon, _text, _unique_object, parse_scene,
 )

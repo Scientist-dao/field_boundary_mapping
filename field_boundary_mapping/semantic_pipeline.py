@@ -18,7 +18,7 @@ COLORS = {
 
 
 def load_core():
-    sys.path.insert(0, str(Path(__file__).resolve().parent / "lib"))
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
     try:
         import field_boundary_core
     except ImportError as exc:

@@ -12,7 +12,9 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from semantic_pipeline import interface_polylines
+from field_boundary_mapping.semantic_pipeline import interface_polylines
+
+PKG = Path(__file__).resolve().parents[1]   # Python 包根
 
 SCHEMA = "visible_boundaries_v1"
 PRIMARY = ("crop", "ground", "woody_vegetation", "water", "ditch")
@@ -398,7 +400,7 @@ def extract_run(run_dir, min_length_px=12, gap_closure_px=0):
                        "instance_policy": "union_of_spatially_consistent_masks",
                        "temporal_identity_used": False},
         "implementation_sha256": {p.name: sha256(p) for p in
-                                  (Path(__file__), Path(__file__).with_name("semantic_pipeline.py"))},
+                                  (Path(__file__), PKG / "semantic_pipeline.py")},
         "frames": frames,
         "summary": {"frames": len(frames), "frames_with_boundaries": sum(bool(f["boundaries"]) for f in frames),
                     "boundary_count": sum(len(f["boundaries"]) for f in frames),

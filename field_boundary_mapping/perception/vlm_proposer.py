@@ -24,11 +24,11 @@ os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
 import cv2
 import numpy as np
 
-from review_results import ResultStore
-from run_offline import write_json
-from run_proposals import REGION_PROMPTS, fields, identifier
+from field_boundary_mapping.evidence.review_results import ResultStore
+from field_boundary_mapping.proposals.run_offline import write_json
+from field_boundary_mapping.proposals.run_proposals import REGION_PROMPTS, fields, identifier
 
-BASE = Path(__file__).resolve().parent
+BASE = Path(__file__).resolve().parents[2]   # 仓库根
 PROMPT_VERSION = "vlm-proposals-v4"
 MAX_PROPOSALS_PER_FRAME = 8
 MAX_NEW_TOKENS = 1024

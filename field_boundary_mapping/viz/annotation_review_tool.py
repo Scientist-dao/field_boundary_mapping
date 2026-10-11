@@ -29,7 +29,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import cv2
 
-BASE = os.path.dirname(os.path.abspath(__file__))
+BASE = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # 仓库根
 JSON_PATH = os.path.join(BASE, "地头数据集标注_v0_20260919.json")
 VIDEO_DIR = os.path.normpath(os.path.join(BASE, "..", "..", "地头数据集"))
 CACHE_DIR = os.path.join(BASE, "视频抽帧_20260918", "frame_cache")

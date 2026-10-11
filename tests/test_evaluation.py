@@ -4,8 +4,8 @@ import tempfile
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from evaluate_offline import evaluate
-from run_offline import write_json
+from field_boundary_mapping.evidence.evaluate_offline import evaluate
+from field_boundary_mapping.proposals.run_offline import write_json
 
 
 class EvaluationTests(unittest.TestCase):

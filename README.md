@@ -13,9 +13,9 @@
 ```
 
 提案源两种可选:
-- **云 API** (`cloud_vlm_proposer.py`): OpenAI 兼容接口
+- **云 API** (`perception/cloud_vlm_proposer.py`): OpenAI 兼容接口
   (默认 DashScope, 模型如 `qwen-vl-max-latest`);
-- **本地 VLM** (`vlm_proposer.py`): 本地部署的 Qwen3-VL。
+- **本地 VLM** (`perception/vlm_proposer.py`): 本地部署的 Qwen3-VL。
 
 ## 设计纪律
 
@@ -24,10 +24,13 @@
 - **模型输出不修补**: 解析失败、字段缺失、坐标越界一律记为
   失败并归档原始响应, 不做语义级重试或事后改写。
 - **证据可追溯**: 实例级审计 (重复/冲突/时序一致性) 全部有
-  脚本产出报告, 人工复核走 `review_results.py` /
-  `annotation_review_tool.py`。
+  脚本产出报告, 人工复核走 `evidence/review_results.py` /
+  `viz/annotation_review_tool.py`。
 
 ## 目录结构
+
+代码按职责组织为 `field_boundary_mapping/` Python 包
+(五个子包), 从仓库根以 `python -m field_boundary_mapping.<子包>.<模块>` 运行:
 
 ```
 field_boundary_mapping/
@@ -37,35 +40,46 @@ field_boundary_mapping/
 ├── lib/                           # 编译产物 (生成)
 ├── tests/                         # 491 个自包含单元测试
 │
-│  三阶段流水
-├── scene_understanding.py         # 场景理解: VLM 输出解析与核验
-├── scene_staging.py               # 分阶段编排 (理解 → 细化 → 渲染)
-├── run_staged_scene.py            # 分阶段运行入口
-├── run_scene_understanding.py     # 场景理解批量运行
-├── refine_scene_regions.py        # 场景区域 SAM 细化
-├── run_proposals.py               # 区域候选提案 + SAM 细化 + 评估
-│
-│  提案源与感知
-├── cloud_vlm_proposer.py          # 云 API 提案源 (OpenAI 兼容)
-├── vlm_proposer.py                # 本地 VLM 提案源
-├── sam3_local.py                  # 本地 SAM3 推理封装
-│
-│  证据加工
-├── group_instances.py             # 实例分组派生层 (跨提案/跨帧)
-├── analyze_instance_conflicts.py  # 实例重复与冲突审计
-├── analyze_temporal_consistency.py# 时序一致性评分与链构建
-├── extract_visible_boundaries.py  # 单帧可见边界提取 (含闭合层)
-├── evaluate_offline.py / fuse_metric.py  # 离线评估与融合指标
-│
-│  可视化与复核
-├── serve_track_viewer.py          # 轨线浏览器查看器
-├── serve_sam_viewer.py            # SAM 结果查看器
-├── semantic_pipeline.py           # 掩膜/渲染工具与调色板
-├── render_track_visualization.py / render_ablation_comparison.py
-├── rerender_overlays.py           # 叠加图重渲染
-├── review_results.py / annotation_review_tool.py  # 人工复核
-├── compare_proposal_runs.py       # 提案配置对比
-└── run_offline.py                 # SAM 离线批量推理
+└── field_boundary_mapping/        # Python 包
+    ├── semantic_pipeline.py       # 掩膜/渲染工具与调色板
+    │
+    │  感知与提案源
+    ├── perception/
+    │   ├── cloud_vlm_proposer.py  # 云 API 提案源 (OpenAI 兼容)
+    │   ├── vlm_proposer.py        # 本地 VLM 提案源
+    │   └── sam3_local.py          # 本地 SAM3 推理封装
+    │
+    │  提案与三阶段流水
+    ├── proposals/
+    │   ├── run_offline.py         # SAM 离线批量推理
+    │   ├── run_proposals.py       # 区域候选提案 + SAM 细化 + 评估
+    │   └── run_full_image_sam3.py # VLM 失效时的全图直推旁路
+    │
+    │  场景理解与细化
+    ├── scene/
+    │   ├── scene_understanding.py # VLM 输出解析与核验
+    │   ├── scene_staging.py       # 分阶段编排 (理解 → 细化 → 渲染)
+    │   ├── run_scene_understanding.py  # 场景理解批量运行
+    │   ├── run_staged_scene.py    # 分阶段运行入口
+    │   └── refine_scene_regions.py# 场景区域 SAM 细化
+    │
+    │  证据加工
+    ├── evidence/
+    │   ├── group_instances.py     # 实例分组派生层 (跨提案/跨帧)
+    │   ├── analyze_instance_conflicts.py    # 实例重复与冲突审计
+    │   ├── analyze_temporal_consistency.py  # 时序一致性评分与链构建
+    │   ├── extract_visible_boundaries.py    # 单帧可见边界提取 (含闭合层)
+    │   ├── evaluate_offline.py / fuse_metric.py  # 离线评估与融合指标
+    │   ├── review_results.py      # 人工复核查看器
+    │   └── compare_proposal_runs.py  # 提案配置对比
+    │
+    │  可视化
+    └── viz/
+        ├── serve_track_viewer.py  # 轨线浏览器查看器
+        ├── serve_sam_viewer.py    # SAM 结果查看器
+        ├── render_track_visualization.py / render_ablation_comparison.py
+        ├── rerender_overlays.py   # 叠加图重渲染
+        └── annotation_review_tool.py  # 标注复核
 ```
 
 ## 构建与测试
@@ -97,19 +111,19 @@ cmake --build build-core --config Release
 
 ```powershell
 $env:DASHSCOPE_API_KEY = "..."   # 或 --api-key-env 指定其他变量名
-.\.venv\Scripts\python.exe run_proposals.py --help
+.\.venv\Scripts\python.exe -X utf8 -m field_boundary_mapping.proposals.run_proposals --help
 ```
 
 **本地 SAM3**: 需自备 SAM3 权重 checkpoint:
 
 ```powershell
-.\.venv\Scripts\python.exe run_offline.py --weights path\to\sam3.pt --output runs\my_run ...
+.\.venv\Scripts\python.exe -X utf8 -m field_boundary_mapping.proposals.run_offline --weights path\to\sam3.pt --output runs\my_run ...
 ```
 
 **浏览器查看器** (只读叠加, 不修改 run 目录):
 
 ```powershell
-.\.venv\Scripts\python.exe serve_track_viewer.py runs\my_run
+.\.venv\Scripts\python.exe -X utf8 -m field_boundary_mapping.viz.serve_track_viewer runs\my_run
 ```
 
 ## 语义类别

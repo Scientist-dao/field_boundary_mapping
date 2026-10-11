@@ -10,11 +10,12 @@ import time
 import cv2
 import numpy as np
 
-from sam3_local import LocalSAM3, PROMPTS, PROMPT_VERSION, offline_runtime
-from semantic_pipeline import analyze_frame, load_core
+from field_boundary_mapping.perception.sam3_local import LocalSAM3, PROMPTS, PROMPT_VERSION, offline_runtime
+from field_boundary_mapping.semantic_pipeline import analyze_frame, load_core
 
 
-BASE = Path(__file__).resolve().parent
+BASE = Path(__file__).resolve().parents[2]   # 仓库根
+PKG = BASE / "field_boundary_mapping"        # Python 包根
 
 
 def file_hash(path):
@@ -117,7 +118,9 @@ def run(args):
         "prompts": list(PROMPTS), "confidence": args.confidence,
         "device": args.device, "threads": args.threads,
         "implementation_sha256": {
-            p.name: file_hash(p) for p in [Path(__file__), BASE / "sam3_local.py", BASE / "semantic_pipeline.py", Path(core.__file__)]
+            p.name: file_hash(p) for p in [
+                Path(__file__), PKG / "perception" / "sam3_local.py",
+                PKG / "semantic_pipeline.py", Path(core.__file__)]
         },
     }
     signature = json.loads(json.dumps(signature))

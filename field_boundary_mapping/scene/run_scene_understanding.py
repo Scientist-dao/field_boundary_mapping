@@ -8,14 +8,15 @@ import re
 import cv2
 import numpy as np
 
-from cloud_vlm_proposer import CloudVLM, DEFAULT_API_KEY_ENV, DEFAULT_BASE_URL, DEFAULT_TIMEOUT
-from review_results import ResultStore
-from run_offline import file_hash, write_json
-from run_proposals import identifier
-from scene_understanding import GATES, INSTRUCTIONS, PROMPT_VERSION, SCHEMA_VERSION, parse_scene
+from field_boundary_mapping.perception.cloud_vlm_proposer import CloudVLM, DEFAULT_API_KEY_ENV, DEFAULT_BASE_URL, DEFAULT_TIMEOUT
+from field_boundary_mapping.evidence.review_results import ResultStore
+from field_boundary_mapping.proposals.run_offline import file_hash, write_json
+from field_boundary_mapping.proposals.run_proposals import identifier
+from field_boundary_mapping.scene.scene_understanding import GATES, INSTRUCTIONS, PROMPT_VERSION, SCHEMA_VERSION, parse_scene
 
 
-BASE = Path(__file__).resolve().parent
+BASE = Path(__file__).resolve().parents[2]   # 仓库根
+PKG = BASE / "field_boundary_mapping"        # Python 包根
 
 
 def source_frames(store):
@@ -139,8 +140,9 @@ def run(args):
         "history_frames": args.history_frames, "history_seconds": args.history_seconds,
         "source_manifest_sha256": file_hash(store.resolve("manifest.json")),
         "target_frames": args.frames, "instruction_sha256": hashlib.sha256(INSTRUCTIONS[args.prompt_version].encode()).hexdigest(),
-        "implementation_sha256": {name: file_hash(BASE / name) for name in
-                                  ("scene_understanding.py", "run_scene_understanding.py", "cloud_vlm_proposer.py")},
+        "implementation_sha256": {path.name: file_hash(path) for path in
+                                  (Path(__file__), PKG / "scene" / "scene_understanding.py",
+                                   PKG / "perception" / "cloud_vlm_proposer.py")},
     }
     output = args.output.resolve()
     if output.is_relative_to(store.root):
@@ -246,7 +248,7 @@ def load_scene_run(results, scenes):
     manifest_path = Path(scenes) / "manifest.json"
     manifest = json.loads(manifest_path.read_bytes())
     if manifest.get("schema_version") == "field_functional_scene_staged_run_v1":
-        from run_staged_scene import load_staged_scene_run
+        from field_boundary_mapping.scene.run_staged_scene import load_staged_scene_run
         return load_staged_scene_run(results, scenes)
     if (manifest.get("schema_version") != "field_functional_scene_run_v1"
             or manifest.get("status") not in ("completed", "completed_with_failures")

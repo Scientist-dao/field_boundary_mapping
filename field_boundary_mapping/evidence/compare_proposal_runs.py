@@ -10,7 +10,7 @@ from pathlib import Path
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-BASE = Path(__file__).resolve().parent / "runs"
+BASE = Path(__file__).resolve().parents[2] / "runs"   # 仓库根/runs
 
 
 def frame_summary(run_name, frame_id):

@@ -12,11 +12,11 @@ import cv2
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from cloud_vlm_proposer import DEFAULT_API_KEY_ENV, DEFAULT_BASE_URL
-from run_offline import file_hash, write_json
-from run_scene_understanding import load_scene_run
-from run_staged_scene import INVENTORY_VERSION, STAGED_VERSION, RESPONSE_FORMAT, load_staged_scene_run, main, run
-from scene_understanding import GATES, scene_queries
+from field_boundary_mapping.perception.cloud_vlm_proposer import DEFAULT_API_KEY_ENV, DEFAULT_BASE_URL
+from field_boundary_mapping.proposals.run_offline import file_hash, write_json
+from field_boundary_mapping.scene.run_scene_understanding import load_scene_run
+from field_boundary_mapping.scene.run_staged_scene import INVENTORY_VERSION, STAGED_VERSION, RESPONSE_FORMAT, load_staged_scene_run, main, run
+from field_boundary_mapping.scene.scene_understanding import GATES, scene_queries
 
 
 class StagedSceneRunTests(unittest.TestCase):
@@ -73,7 +73,7 @@ class StagedSceneRunTests(unittest.TestCase):
     def run_valid(self, pipeline_version=STAGED_VERSION, **changes):
         documents = [self.catalogue, self.localized] if pipeline_version == STAGED_VERSION else [
             *self.inventory_documents(), self.localized]
-        with patch("run_staged_scene.CloudVLM", autospec=True) as model:
+        with patch("field_boundary_mapping.scene.run_staged_scene.CloudVLM", autospec=True) as model:
             model.return_value.ask_images.side_effect = [self.response(document) for document in documents]
             manifest = run(self.args(pipeline_version=pipeline_version, **changes))
             calls = model.return_value.ask_images.call_args_list
@@ -105,7 +105,7 @@ class StagedSceneRunTests(unittest.TestCase):
             self.assertTrue(all(obj[key] is False for key in GATES))
 
     def test_staged_archive_feeds_existing_offline_refinement_with_bound_provenance(self):
-        import refine_scene_regions as refinement
+        import field_boundary_mapping.scene.refine_scene_regions as refinement
         self.run_valid()
         before = {p.name: p.read_bytes() for p in self.args().output.iterdir()}
         weights = self.root / "synthetic.pt"
@@ -127,13 +127,13 @@ class StagedSceneRunTests(unittest.TestCase):
             self.assertEqual(file_hash(args.output / relative), digest)
 
     def test_single_mode_never_sends_history_to_either_stage(self):
-        with patch("run_staged_scene.CloudVLM") as model:
+        with patch("field_boundary_mapping.scene.run_staged_scene.CloudVLM") as model:
             model.return_value.ask_images.side_effect = [self.response(self.catalogue), self.response(self.localized)]
             run(self.args(mode="single"))
         self.assertTrue(all(len(call.args[0]) == 1 for call in model.return_value.ask_images.call_args_list))
 
     def test_catalogue_failure_preserves_raw_and_prevents_localization(self):
-        with patch("run_staged_scene.CloudVLM") as model:
+        with patch("field_boundary_mapping.scene.run_staged_scene.CloudVLM") as model:
             model.return_value.ask_images.return_value = ('{"regions": []}', {"finish_reason": "stop"})
             with self.assertRaises(ValueError):
                 run(self.args())
@@ -147,7 +147,7 @@ class StagedSceneRunTests(unittest.TestCase):
 
     def test_bbox_localization_is_not_repaired_and_catalogue_is_preserved(self):
         self.localized["regions"][0]["polygon"] = [[0, 300, 500, 1000]]
-        with patch("run_staged_scene.CloudVLM") as model:
+        with patch("field_boundary_mapping.scene.run_staged_scene.CloudVLM") as model:
             model.return_value.ask_images.side_effect = [self.response(self.catalogue), self.response(self.localized)]
             with self.assertRaises(ValueError):
                 run(self.args())
@@ -165,7 +165,7 @@ class StagedSceneRunTests(unittest.TestCase):
             responses = [self.response(self.catalogue), self.response(self.localized)]
             raw, timing = responses[stage_index]
             responses[stage_index] = (raw, {**timing, "finish_reason": "length"})
-            with self.subTest(stage=stage_index), patch("run_staged_scene.CloudVLM") as model:
+            with self.subTest(stage=stage_index), patch("field_boundary_mapping.scene.run_staged_scene.CloudVLM") as model:
                 model.return_value.ask_images.side_effect = responses
                 with self.assertRaises(ValueError):
                     run(self.args(output=output))
@@ -180,7 +180,7 @@ class StagedSceneRunTests(unittest.TestCase):
             output = self.root / f"nontext-{index}"
             timing = {"finish_reason": "stop", "parsed_from": "content", "strict_content": True,
                       "reasoning_content": json.dumps(self.catalogue)}
-            with patch("run_staged_scene.CloudVLM") as model:
+            with patch("field_boundary_mapping.scene.run_staged_scene.CloudVLM") as model:
                 model.return_value.ask_images.return_value = (raw, timing)
                 with self.assertRaises(ValueError):
                     run(self.args(output=output))
@@ -191,7 +191,7 @@ class StagedSceneRunTests(unittest.TestCase):
 
     def test_empty_catalogue_explicitly_skips_second_call(self):
         empty = {"regions": [], "relations": [], "boundaries": [], "unknowns": ["cannot see objects"]}
-        with patch("run_staged_scene.CloudVLM") as model:
+        with patch("field_boundary_mapping.scene.run_staged_scene.CloudVLM") as model:
             model.return_value.ask_images.return_value = self.response(empty)
             run(self.args())
         self.assertEqual(model.return_value.ask_images.call_count, 1)
@@ -209,7 +209,7 @@ class StagedSceneRunTests(unittest.TestCase):
                  {"api_key_env": "OTHER_KEY"}, {"timeout": float("nan")}, {"timeout": 3601},
                  {"max_output_tokens": 0}, {"frames": ["f2", "f2"]}, {"frames": ["f9"]}]
         for changes in cases:
-            with self.subTest(changes=changes), patch("run_staged_scene.CloudVLM") as model:
+            with self.subTest(changes=changes), patch("field_boundary_mapping.scene.run_staged_scene.CloudVLM") as model:
                 with self.assertRaises(ValueError):
                     run(self.args(**changes))
                 model.assert_not_called()
@@ -254,7 +254,7 @@ class StagedSceneRunTests(unittest.TestCase):
                 run(self.args())
             send.assert_not_called()
         self.assertFalse(self.args().output.exists())
-        with patch("run_staged_scene.CloudVLM") as model:
+        with patch("field_boundary_mapping.scene.run_staged_scene.CloudVLM") as model:
             model.return_value.ask_images.side_effect = RuntimeError("DO_NOT_ARCHIVE_PROVIDER_DETAIL")
             with self.assertRaises(RuntimeError):
                 run(self.args())
@@ -313,7 +313,7 @@ class StagedSceneRunTests(unittest.TestCase):
             else:
                 entries.append({**entries[0], "item_id": "new" if operation == "new" else "r1"})
             output = self.root / operation
-            with self.subTest(operation=operation), patch("run_staged_scene.CloudVLM") as model:
+            with self.subTest(operation=operation), patch("field_boundary_mapping.scene.run_staged_scene.CloudVLM") as model:
                 model.return_value.ask_images.side_effect = [self.response(inventory), self.response(assignments)]
                 with self.assertRaises(ValueError):
                     run(self.args(pipeline_version=INVENTORY_VERSION, output=output))
@@ -329,7 +329,7 @@ class StagedSceneRunTests(unittest.TestCase):
 
     def test_empty_inventory_explicitly_skips_both_remaining_calls(self):
         inventory = {"items": [], "unknowns": ["Image fully obscured"]}
-        with patch("run_staged_scene.CloudVLM") as model:
+        with patch("field_boundary_mapping.scene.run_staged_scene.CloudVLM") as model:
             model.return_value.ask_images.return_value = self.response(inventory)
             run(self.args(pipeline_version=INVENTORY_VERSION))
             self.assertEqual(model.return_value.ask_images.call_count, 1)
@@ -348,7 +348,7 @@ class StagedSceneRunTests(unittest.TestCase):
             raw, timing = responses[index]
             responses[index] = raw, {**timing, "finish_reason": "length"}
             output = self.root / f"truncated-{index}"
-            with self.subTest(stage=index), patch("run_staged_scene.CloudVLM") as model:
+            with self.subTest(stage=index), patch("field_boundary_mapping.scene.run_staged_scene.CloudVLM") as model:
                 model.return_value.ask_images.side_effect = responses
                 with self.assertRaises(ValueError):
                     run(self.args(pipeline_version=INVENTORY_VERSION, output=output))
@@ -380,7 +380,7 @@ class StagedSceneRunTests(unittest.TestCase):
                 load_scene_run(self.source, self.args().output)
 
     def test_pipeline_cannot_be_relabelled_by_changing_configuration(self):
-        from run_staged_scene import template_hashes
+        from field_boundary_mapping.scene.run_staged_scene import template_hashes
         for version, other in ((STAGED_VERSION, INVENTORY_VERSION), (INVENTORY_VERSION, STAGED_VERSION)):
             output = self.root / version
             manifest, _ = self.run_valid(version, output=output)
@@ -390,7 +390,7 @@ class StagedSceneRunTests(unittest.TestCase):
                 load_scene_run(self.source, output)
 
     def test_inventory_archive_feeds_sam_refinement_without_changing_sources(self):
-        import refine_scene_regions as refinement
+        import field_boundary_mapping.scene.refine_scene_regions as refinement
         self.run_valid(INVENTORY_VERSION)
         before = {p.name: p.read_bytes() for p in self.args().output.iterdir()}
         weights = self.root / "synthetic.pt"
@@ -412,10 +412,10 @@ class StagedSceneRunTests(unittest.TestCase):
     def test_cli_keeps_old_default_and_exposes_inventory_only_by_selection(self):
         required = ["run_staged_scene.py", "--results", "source", "--frames", "f2", "--output", "out", "--mode", "single"]
         for extra, expected in (([], STAGED_VERSION), (["--pipeline-version", INVENTORY_VERSION], INVENTORY_VERSION)):
-            with patch.object(sys, "argv", required + extra), patch("run_staged_scene.run") as runner:
+            with patch.object(sys, "argv", required + extra), patch("field_boundary_mapping.scene.run_staged_scene.run") as runner:
                 main()
                 self.assertEqual(runner.call_args.args[0].pipeline_version, expected)
-        with patch("run_staged_scene.CloudVLM") as model:
+        with patch("field_boundary_mapping.scene.run_staged_scene.CloudVLM") as model:
             with self.assertRaises(ValueError):
                 run(self.args(pipeline_version="unsupported"))
             model.assert_not_called()
@@ -424,7 +424,7 @@ class StagedSceneRunTests(unittest.TestCase):
         inventory, assignments = self.inventory_documents()
         for assignment in assignments["assignments"]:
             del assignment["uncertainties"]
-        with patch("run_staged_scene.CloudVLM") as model:
+        with patch("field_boundary_mapping.scene.run_staged_scene.CloudVLM") as model:
             model.return_value.ask_images.side_effect = [self.response(inventory), self.response(assignments)]
             with self.assertRaisesRegex(ValueError, "uncertainties"):
                 run(self.args(pipeline_version=INVENTORY_VERSION))
@@ -439,7 +439,7 @@ class StagedSceneRunTests(unittest.TestCase):
     def test_inventory_localization_bbox_does_not_become_a_polygon(self):
         for region in self.localized["regions"]:
             region["polygon"] = [[0, 300, 500, 1000]]
-        with patch("run_staged_scene.CloudVLM") as model:
+        with patch("field_boundary_mapping.scene.run_staged_scene.CloudVLM") as model:
             model.return_value.ask_images.side_effect = [
                 self.response(d) for d in (*self.inventory_documents(), self.localized)]
             with self.assertRaises(ValueError):

@@ -3,8 +3,8 @@ from collections import Counter
 import json
 from pathlib import Path
 
-from fuse_metric import confined_file
-from run_offline import write_json
+from field_boundary_mapping.evidence.fuse_metric import confined_file
+from field_boundary_mapping.proposals.run_offline import write_json
 
 
 STAGES = ("IN_ROW", "APPROACH", "HEADLAND", "ENTER_ROW")

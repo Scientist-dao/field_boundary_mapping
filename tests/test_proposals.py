@@ -12,12 +12,12 @@ import cv2
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from rerender_overlays import add_proposal_passed_variants, file_hash as rerender_file_hash
-from review_results import ResultStore
-from run_proposals import assess_predictions, cap_verified_detections, prepare_inputs, render_candidates, run
-from sam3_local import LocalSAM3
-from semantic_pipeline import load_core
-from vlm_proposer import parse_proposals
+from field_boundary_mapping.viz.rerender_overlays import add_proposal_passed_variants, file_hash as rerender_file_hash
+from field_boundary_mapping.evidence.review_results import ResultStore
+from field_boundary_mapping.proposals.run_proposals import assess_predictions, cap_verified_detections, prepare_inputs, render_candidates, run
+from field_boundary_mapping.perception.sam3_local import LocalSAM3
+from field_boundary_mapping.semantic_pipeline import load_core
+from field_boundary_mapping.perception.vlm_proposer import parse_proposals
 
 
 def proposal(**changes):
@@ -87,7 +87,7 @@ class ProposalTests(unittest.TestCase):
                                   weights=weights, clip_dir=None, confidence=0.3, device="cpu", threads=1)
         self.document["frames"][0]["image_sha256"] = "wrong"
         self.save()
-        with patch("run_proposals.LocalSAM3") as model, self.assertRaises(ValueError):
+        with patch("field_boundary_mapping.proposals.run_proposals.LocalSAM3") as model, self.assertRaises(ValueError):
             run(args)
         model.assert_not_called()
         self.assertFalse(args.output.exists())
@@ -277,7 +277,7 @@ class ProposalTests(unittest.TestCase):
         args = argparse.Namespace(results=self.source, proposals=self.path, output=self.root / "out",
                                   weights=weights, clip_dir=None, confidence=0.3, device="cpu", threads=1)
         before = {p.name: p.read_bytes() for p in self.source.iterdir()}
-        with patch("run_proposals.LocalSAM3") as model:
+        with patch("field_boundary_mapping.proposals.run_proposals.LocalSAM3") as model:
             model.return_value.metadata = {"backend": "SYNTHETIC_TEST_ONLY"}
             model.return_value.predict_regions.return_value = ([], {"total_seconds": 0})
             manifest = run(args)
@@ -301,7 +301,7 @@ class ProposalTests(unittest.TestCase):
         self.assertEqual(before, {p.name: p.read_bytes() for p in self.source.iterdir()})
         with np.load(args.output / "f0" / "masks.npz", allow_pickle=False) as masks:
             self.assertNotIn("surface_labels", masks)
-        from fuse_metric import fuse
+        from field_boundary_mapping.evidence.fuse_metric import fuse
         with self.assertRaisesRegex(ValueError, "Unverified region proposals"):
             fuse(args.output, self.root / "not-read-geometry.json")
 
@@ -319,7 +319,7 @@ class ProposalTests(unittest.TestCase):
         args = argparse.Namespace(results=self.source, proposals=self.path, output=self.root / "capped",
                                   weights=weights, clip_dir=None, confidence=0.3, device="cpu", threads=1,
                                   max_instances_per_proposal=2)
-        with patch("run_proposals.LocalSAM3") as model:
+        with patch("field_boundary_mapping.proposals.run_proposals.LocalSAM3") as model:
             model.return_value.metadata = {"backend": "SYNTHETIC_TEST_ONLY"}
             model.return_value.predict_regions.return_value = (detections, {"total_seconds": 0})
             run(args)
@@ -349,7 +349,7 @@ class ProposalTests(unittest.TestCase):
         args = argparse.Namespace(results=self.source, proposals=self.path, output=self.root / "capped2",
                                   weights=weights, clip_dir=None, confidence=0.3, device="cpu", threads=1,
                                   max_instances_per_proposal=1)
-        with patch("run_proposals.LocalSAM3") as model:
+        with patch("field_boundary_mapping.proposals.run_proposals.LocalSAM3") as model:
             model.return_value.metadata = {"backend": "SYNTHETIC_TEST_ONLY"}
             model.return_value.predict_regions.return_value = (detections, {"total_seconds": 0})
             run(args)

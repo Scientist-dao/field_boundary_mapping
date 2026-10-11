@@ -15,19 +15,19 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-BASE = Path(__file__).resolve().parent
+BASE = Path(__file__).resolve().parents[2]   # 仓库根
 sys.path.insert(0, str(BASE))
 
-from run_offline import file_hash, write_image, write_json, VideoReader
-from run_proposals import REGION_PROMPTS
-from sam3_local import LocalSAM3, offline_runtime
-from semantic_pipeline import load_core, mask_contours
-from refine_scene_regions import (
+from field_boundary_mapping.proposals.run_offline import file_hash, write_image, write_json, VideoReader
+from field_boundary_mapping.proposals.run_proposals import REGION_PROMPTS
+from field_boundary_mapping.perception.sam3_local import LocalSAM3, offline_runtime
+from field_boundary_mapping.semantic_pipeline import load_core, mask_contours
+from field_boundary_mapping.scene.refine_scene_regions import (
     ROLE_PALETTE, EXTENT_CAVEAT, _polygon_mask, _overlaps, _fraction,
     _candidate_edge_diagnostics, render_overlays,
 )
-from run_proposals import assess_predictions
-from scene_understanding import GATES
+from field_boundary_mapping.proposals.run_proposals import assess_predictions
+from field_boundary_mapping.scene.scene_understanding import GATES
 
 RUN_SCHEMA = "field_functional_full_image_refinement_run_v1"
 BACKEND = "local_sam3_full_image_surface_grounding"

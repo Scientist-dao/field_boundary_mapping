@@ -8,13 +8,14 @@ import time
 import cv2
 import numpy as np
 
-from review_results import ResultStore
-from run_offline import file_hash, write_image, write_json
-from sam3_local import LocalSAM3, offline_runtime
-from semantic_pipeline import COLORS, load_core, mask_contours
+from field_boundary_mapping.evidence.review_results import ResultStore
+from field_boundary_mapping.proposals.run_offline import file_hash, write_image, write_json
+from field_boundary_mapping.perception.sam3_local import LocalSAM3, offline_runtime
+from field_boundary_mapping.semantic_pipeline import COLORS, load_core, mask_contours
 
 
-BASE = Path(__file__).resolve().parent
+BASE = Path(__file__).resolve().parents[2]   # 仓库根
+PKG = BASE / "field_boundary_mapping"        # Python 包根
 PROMPT_VERSION = "region-proposals-v2"
 REGION_PROMPTS = {
     "crop": "agricultural crops",
@@ -270,8 +271,9 @@ def run(args):
         "disagreement_score": DISAGREEMENT_SCORE, "disagreement_area": DISAGREEMENT_AREA,
         "max_instances_per_proposal": getattr(args, "max_instances_per_proposal", None),
         "implementation_sha256": {path.name: file_hash(path) for path in
-                                  (Path(__file__), BASE / "sam3_local.py", BASE / "semantic_pipeline.py",
-                                   BASE / "review_results.py", BASE / "run_offline.py", Path(core.__file__))},
+                                  (Path(__file__), PKG / "perception" / "sam3_local.py",
+                                   PKG / "semantic_pipeline.py", PKG / "evidence" / "review_results.py",
+                                   PKG / "proposals" / "run_offline.py", Path(core.__file__))},
     }
     model = LocalSAM3(weights, args.clip_dir, args.confidence, args.device, args.threads)
     output.mkdir(parents=True)

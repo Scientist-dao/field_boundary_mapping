@@ -1,7 +1,7 @@
 import json
 import math
 
-from run_proposals import REGION_PROMPTS, fields, identifier
+from field_boundary_mapping.proposals.run_proposals import REGION_PROMPTS, fields, identifier
 
 
 PROMPT_VERSION = "functional-scene-v1"

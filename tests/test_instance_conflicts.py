@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from analyze_instance_conflicts import (
+from field_boundary_mapping.evidence.analyze_instance_conflicts import (
     aggregate_reports, audit_frame, build_json_payload, pair_overlap,
 )
 

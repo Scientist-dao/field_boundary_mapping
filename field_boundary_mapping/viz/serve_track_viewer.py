@@ -24,7 +24,7 @@ from typing import Any
 import cv2
 import numpy as np
 
-BASE = Path(__file__).resolve().parent
+BASE = Path(__file__).resolve().parents[2]   # 仓库根
 
 SEMANTIC_COLORS = {
     "crop": (64, 168, 96),
@@ -96,7 +96,7 @@ class TrackStore:
             raise ValueError("either chain evidence JSON or boundaries JSON is required")
         if boundaries_path is not None:
             # Keep validation optional; pin the actual bytes used by every render.
-            from extract_visible_boundaries import contained_file, load_boundary_payload, source_manifest
+            from field_boundary_mapping.evidence.extract_visible_boundaries import contained_file, load_boundary_payload, source_manifest
 
             boundaries = load_boundary_payload(boundaries_path, run_dir)
             boundary_frames = boundaries["frames"]

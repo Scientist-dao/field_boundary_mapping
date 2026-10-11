@@ -14,12 +14,12 @@ import cv2
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-import refine_scene_regions as refinement
-from run_offline import file_hash, write_json
-from run_proposals import REGION_PROMPTS
-from run_scene_understanding import instruction_for, load_scene_run
-from scene_understanding import GATES, INSTRUCTIONS, PROMPT_VERSION, ROLES, SCHEMA_VERSION, pixel_points, scene_queries
-from semantic_pipeline import load_core
+import field_boundary_mapping.scene.refine_scene_regions as refinement
+from field_boundary_mapping.proposals.run_offline import file_hash, write_json
+from field_boundary_mapping.proposals.run_proposals import REGION_PROMPTS
+from field_boundary_mapping.scene.run_scene_understanding import instruction_for, load_scene_run
+from field_boundary_mapping.scene.scene_understanding import GATES, INSTRUCTIONS, PROMPT_VERSION, ROLES, SCHEMA_VERSION, pixel_points, scene_queries
+from field_boundary_mapping.semantic_pipeline import load_core
 
 
 def region(region_id="r1", role="current_field", surface="ground", **changes):

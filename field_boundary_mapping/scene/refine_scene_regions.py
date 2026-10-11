@@ -8,16 +8,17 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from run_offline import file_hash, write_image, write_json
-from run_proposals import MAX_OUTSIDE_FRACTION, REGION_PROMPTS, assess_predictions, identifier
-from run_scene_understanding import load_scene_run
-from sam3_local import LocalSAM3, offline_runtime
-from scene_understanding import (GATES, _intersects, parse_scene, pixel_points, region_geometry_kind,
+from field_boundary_mapping.proposals.run_offline import file_hash, write_image, write_json
+from field_boundary_mapping.proposals.run_proposals import MAX_OUTSIDE_FRACTION, REGION_PROMPTS, assess_predictions, identifier
+from field_boundary_mapping.scene.run_scene_understanding import load_scene_run
+from field_boundary_mapping.perception.sam3_local import LocalSAM3, offline_runtime
+from field_boundary_mapping.scene.scene_understanding import (GATES, _intersects, parse_scene, pixel_points, region_geometry_kind,
                                  region_outline, scene_queries)
-from semantic_pipeline import load_core, mask_contours
+from field_boundary_mapping.semantic_pipeline import load_core, mask_contours
 
 
-BASE = Path(__file__).resolve().parent
+BASE = Path(__file__).resolve().parents[2]   # 仓库根
+PKG = BASE / "field_boundary_mapping"        # Python 包根
 PIPELINE_VERSION = "functional-scene-sam3-v3"
 RUN_SCHEMA = "field_functional_refinement_run_v1"
 BACKEND = "local_sam3_functional_scene_grounding"
@@ -378,13 +379,16 @@ def _run_offline(args):
         "source_scene_record_sha256": {item["frame"]["frame_id"]: item["scene_record_sha256"] for item in prepared},
         "surface_prompts": REGION_PROMPTS, "max_outside_fraction": MAX_OUTSIDE_FRACTION,
         "implementation_sha256": {path.name: file_hash(path) for path in (
-            Path(__file__), BASE / "scene_understanding.py", BASE / "run_scene_understanding.py",
-            BASE / "run_proposals.py", BASE / "sam3_local.py", BASE / "semantic_pipeline.py",
-            BASE / "run_offline.py", BASE / "review_results.py", Path(core.__file__))},
+            Path(__file__), PKG / "scene" / "scene_understanding.py",
+            PKG / "scene" / "run_scene_understanding.py", PKG / "proposals" / "run_proposals.py",
+            PKG / "perception" / "sam3_local.py", PKG / "semantic_pipeline.py",
+            PKG / "proposals" / "run_offline.py", PKG / "evidence" / "review_results.py",
+            Path(core.__file__))},
     }
     if scene_manifest["schema_version"] == "field_functional_scene_staged_run_v1":
         configuration["implementation_sha256"].update(
-            {name: file_hash(BASE / name) for name in ("scene_staging.py", "run_staged_scene.py")})
+            {path.name: file_hash(path) for path in
+             (PKG / "scene" / "scene_staging.py", PKG / "scene" / "run_staged_scene.py")})
     output.mkdir(parents=True)
     manifest = {"schema_version": RUN_SCHEMA, "configuration": configuration, "status": "running",
                 "purpose": "development_functional_candidates_not_held_out_accuracy",

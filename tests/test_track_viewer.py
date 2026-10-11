@@ -16,8 +16,9 @@ from unittest import mock
 import cv2
 import numpy as np
 
-VIEWER_PATH = Path(__file__).resolve().parents[1] / "serve_track_viewer.py"
-sys.path.insert(0, str(VIEWER_PATH.parent))
+VIEWER_PATH = (Path(__file__).resolve().parents[1] / "field_boundary_mapping"
+               / "viz" / "serve_track_viewer.py")
+sys.path.insert(0, str(VIEWER_PATH.parents[2]))
 SPEC = importlib.util.spec_from_file_location("track_viewer_under_test", VIEWER_PATH)
 viewer = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(viewer)
@@ -154,7 +155,7 @@ def synthetic_boundaries(run_dir: Path) -> dict:
 
 
 def boundary_loader_module(payload: dict) -> ModuleType:
-    from extract_visible_boundaries import contained_file, source_manifest
+    from field_boundary_mapping.evidence.extract_visible_boundaries import contained_file, source_manifest
 
     module = ModuleType("extract_visible_boundaries")
     module.load_boundary_payload = mock.Mock(return_value=payload)
@@ -166,7 +167,7 @@ def boundary_loader_module(payload: dict) -> ModuleType:
 def write_extracted_boundary_fixture(base: Path, run_dir: Path, extension: str = ".png",
                                      shape: tuple[int, int] = (24, 32)) -> Path:
     """Extract real boundaries from alternate, independently hashed source artifacts."""
-    from extract_visible_boundaries import extract_run
+    from field_boundary_mapping.evidence.extract_visible_boundaries import extract_run
 
     manifest = json.loads((run_dir / "manifest.json").read_bytes())
     height, width = shape
@@ -300,7 +301,7 @@ class TrackViewerTests(unittest.TestCase):
         payload["frames"][1]["boundaries"] = []
         module = boundary_loader_module(payload)
         path = self.base / "boundaries.json"
-        with mock.patch.dict(sys.modules, {"extract_visible_boundaries": module}):
+        with mock.patch.dict(sys.modules, {"field_boundary_mapping.evidence.extract_visible_boundaries": module}):
             self.start_server(path)
         module.load_boundary_payload.assert_called_once_with(path, self.run_dir)
         status, body, _ = self.request("/api/data")
@@ -336,7 +337,7 @@ class TrackViewerTests(unittest.TestCase):
 
     def test_optional_mode_keeps_security_headers(self):
         module = boundary_loader_module(synthetic_boundaries(self.run_dir))
-        with mock.patch.dict(sys.modules, {"extract_visible_boundaries": module}):
+        with mock.patch.dict(sys.modules, {"field_boundary_mapping.evidence.extract_visible_boundaries": module}):
             self.start_server(self.base / "boundaries.json")
         policies = []
         for path in ("/", "/api/data", "/render/syn-frame-0/raw.jpg"):
@@ -495,7 +496,7 @@ class TrackViewerTests(unittest.TestCase):
             "maneuver_verified": False,
         }]
         module = boundary_loader_module(payload)
-        with mock.patch.dict(sys.modules, {"extract_visible_boundaries": module}):
+        with mock.patch.dict(sys.modules, {"field_boundary_mapping.evidence.extract_visible_boundaries": module}):
             store = viewer.TrackStore(self.evidence, self.run_dir, self.base / "boundaries.json")
         frame = store.api_data()["visible_boundaries"]["frames"][0]
         self.assertEqual(frame["gap_closed_boundaries"][0]["boundary_id"], "GC001")
@@ -529,7 +530,7 @@ class TrackStoreTests(unittest.TestCase):
         self.assertIsNotNone(cv2.imdecode(np.frombuffer(ghost_only, np.uint8), cv2.IMREAD_COLOR))
 
     def test_no_boundary_dependency_without_option(self):
-        with mock.patch.dict(sys.modules, {"extract_visible_boundaries": None}):
+        with mock.patch.dict(sys.modules, {"field_boundary_mapping.evidence.extract_visible_boundaries": None}):
             store = viewer.TrackStore(self.evidence, self.run_dir)
             self.assertIsNone(store.api_data()["visible_boundaries"])
             self.assertEqual(store.render("syn-frame-0", "raw"),
@@ -566,8 +567,7 @@ class TrackStoreTests(unittest.TestCase):
                     artifact.write_bytes(original)
 
     def test_artifact_bytes_are_rechecked_after_loader_validation(self):
-        import extract_visible_boundaries as extractor
-
+        import field_boundary_mapping.evidence.extract_visible_boundaries as extractor
         path = write_extracted_boundary_fixture(self.base, self.run_dir)
         entry = json.loads((self.run_dir / "manifest.json").read_bytes())["frames"][0]
         load = extractor.load_boundary_payload
@@ -589,8 +589,7 @@ class TrackStoreTests(unittest.TestCase):
                     artifact.write_bytes(original)
 
     def test_manifest_is_bound_to_loader_result_before_caching(self):
-        import extract_visible_boundaries as extractor
-
+        import field_boundary_mapping.evidence.extract_visible_boundaries as extractor
         path = write_extracted_boundary_fixture(self.base, self.run_dir)
         load = extractor.load_boundary_payload
         manifest = self.run_dir / "manifest.json"
@@ -617,7 +616,7 @@ class TrackStoreTests(unittest.TestCase):
                 else:
                     payload["frames"].append(payload["frames"][0])
                 module = boundary_loader_module(payload)
-                with mock.patch.dict(sys.modules, {"extract_visible_boundaries": module}), \
+                with mock.patch.dict(sys.modules, {"field_boundary_mapping.evidence.extract_visible_boundaries": module}), \
                         mock.patch.object(viewer, "ThreadingHTTPServer") as server:
                     with self.assertRaisesRegex(ValueError, "frame_id"):
                         viewer.create_server(self.evidence, self.run_dir, port=0,
@@ -632,7 +631,7 @@ class TrackStoreTests(unittest.TestCase):
                 payload = synthetic_boundaries(self.run_dir)
                 payload["frames"][index]["image"][dimension] = value
                 module = boundary_loader_module(payload)
-                with mock.patch.dict(sys.modules, {"extract_visible_boundaries": module}):
+                with mock.patch.dict(sys.modules, {"field_boundary_mapping.evidence.extract_visible_boundaries": module}):
                     with self.assertRaisesRegex(ValueError, "dimensions mismatch"):
                         viewer.TrackStore(self.evidence, self.run_dir, self.base / "boundaries.json")
 
@@ -648,14 +647,14 @@ class TrackStoreTests(unittest.TestCase):
         payload = synthetic_boundaries(self.run_dir)
         payload["frames"][1]["image"] = {"width": 34, "height": 26}
         module = boundary_loader_module(payload)
-        with mock.patch.dict(sys.modules, {"extract_visible_boundaries": module}):
+        with mock.patch.dict(sys.modules, {"field_boundary_mapping.evidence.extract_visible_boundaries": module}):
             store = viewer.TrackStore(self.evidence, self.run_dir, self.base / "boundaries.json")
         self.assertEqual(store.api_data()["visible_boundaries"], payload)
 
     def test_boundary_loader_validation_failure_propagates(self):
         module = boundary_loader_module(synthetic_boundaries(self.run_dir))
         module.load_boundary_payload.side_effect = ValueError("source hash mismatch")
-        with mock.patch.dict(sys.modules, {"extract_visible_boundaries": module}), \
+        with mock.patch.dict(sys.modules, {"field_boundary_mapping.evidence.extract_visible_boundaries": module}), \
                 mock.patch.object(viewer, "ThreadingHTTPServer") as server:
             with self.assertRaisesRegex(ValueError, "source hash mismatch"):
                 viewer.create_server(self.evidence, self.run_dir, port=0,
@@ -675,7 +674,7 @@ class TrackStoreTests(unittest.TestCase):
         payload = synthetic_boundaries(self.run_dir)
         payload["frames"][1]["capture_time_s"] = 8.5
         module = boundary_loader_module(payload)
-        with mock.patch.dict(sys.modules, {"extract_visible_boundaries": module}):
+        with mock.patch.dict(sys.modules, {"field_boundary_mapping.evidence.extract_visible_boundaries": module}):
             store = viewer.TrackStore(self.evidence, self.run_dir, self.base / "boundaries.json")
         data = store.api_data()
         self.assertEqual(data["sampled_seconds"], [0, 8])

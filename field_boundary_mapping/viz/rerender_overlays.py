@@ -15,8 +15,8 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from run_proposals import render_candidates
-from semantic_pipeline import render_overlay
+from field_boundary_mapping.proposals.run_proposals import render_candidates
+from field_boundary_mapping.semantic_pipeline import render_overlay
 
 
 def file_hash(path):

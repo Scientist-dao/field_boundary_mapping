@@ -5,8 +5,8 @@ from pathlib import Path
 
 import numpy as np
 
-from run_offline import write_json
-from semantic_pipeline import load_core
+from field_boundary_mapping.proposals.run_offline import write_json
+from field_boundary_mapping.semantic_pipeline import load_core
 
 
 def confined_file(root, name):

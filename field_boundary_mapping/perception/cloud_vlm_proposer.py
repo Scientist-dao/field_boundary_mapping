@@ -28,12 +28,12 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from review_results import ResultStore
-from run_offline import write_json
-from run_proposals import identifier
-from vlm_proposer import INSTRUCTION, PROMPT_VERSION as INSTRUCTION_VERSION, parse_proposals
+from field_boundary_mapping.evidence.review_results import ResultStore
+from field_boundary_mapping.proposals.run_offline import write_json
+from field_boundary_mapping.proposals.run_proposals import identifier
+from field_boundary_mapping.perception.vlm_proposer import INSTRUCTION, PROMPT_VERSION as INSTRUCTION_VERSION, parse_proposals
 
-BASE = Path(__file__).resolve().parent
+BASE = Path(__file__).resolve().parents[2]   # 仓库根
 PROMPT_VERSION = "cloud-vlm-proposals-v2"
 DEFAULT_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 DEFAULT_API_KEY_ENV = "DASHSCOPE_API_KEY"

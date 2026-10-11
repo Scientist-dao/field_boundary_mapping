@@ -18,8 +18,9 @@ import cv2
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
+PKG = ROOT / "field_boundary_mapping"
 sys.path.insert(0, str(ROOT))
-from extract_visible_boundaries import extract_frame, extract_run, load_boundary_payload
+from field_boundary_mapping.evidence.extract_visible_boundaries import extract_frame, extract_run, load_boundary_payload
 
 # Keep the contract independent of production constants, including literal False.
 FLAGS = (
@@ -810,7 +811,8 @@ class ExtractRunAndPayloadTests(ContractAssertions):
             "temporal_identity_used": False,
         })
         self.assertEqual(self.payload["implementation_sha256"], {
-            name: digest(ROOT / name) for name in ("extract_visible_boundaries.py", "semantic_pipeline.py")
+            "extract_visible_boundaries.py": digest(PKG / "evidence" / "extract_visible_boundaries.py"),
+            "semantic_pipeline.py": digest(PKG / "semantic_pipeline.py"),
         })
         entries = {e["frame_id"]: e for e in self.manifest["frames"]}
         for frame in self.payload["frames"]:
@@ -1099,7 +1101,7 @@ class ExtractRunAndPayloadTests(ContractAssertions):
 
     def cli(self, output):
         return subprocess.run(
-            [sys.executable, "-B", str(ROOT / "extract_visible_boundaries.py"),
+            [sys.executable, "-B", "-m", "field_boundary_mapping.evidence.extract_visible_boundaries",
              "--run", str(self.run), "--output", str(output)],
             cwd=str(ROOT), env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1", "PYTHONIOENCODING": "utf-8"},
             capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30,
@@ -1204,7 +1206,7 @@ class GapClosureRunTests(ContractAssertions):
     def test_cli_writes_gap_closed_payload(self):
         output = self.base / "cli-gap.json"
         result = subprocess.run(
-            [sys.executable, "-B", str(ROOT / "extract_visible_boundaries.py"),
+            [sys.executable, "-B", "-m", "field_boundary_mapping.evidence.extract_visible_boundaries",
              "--run", str(self.run), "--output", str(output), "--gap-closure-px", "1"],
             cwd=str(ROOT), env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1", "PYTHONIOENCODING": "utf-8"},
             capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30,
