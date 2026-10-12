@@ -357,6 +357,22 @@ class RefinementTests(unittest.TestCase):
             self.assertEqual(entry["quality_flags"], ["functional_overlap_unresolved"])
             self.assertEqual(entry["status"], "refined_candidate")
         self.assertIn("does not establish true or false", evidence["quality_flag_policy"])
+
+    def test_full_width_box_is_flagged_as_non_localizing_audit(self):
+        evidence, _, _ = self.refine(scene(boxed(box=(0, 100, 1000, 800))), [self.mask])
+        entry = evidence["regions"][0]
+        self.assertEqual(entry["status"], "refined_candidate")
+        self.assertEqual(entry["quality_flags"], ["full_width_box_non_localizing"])
+        self.assertIn("localizes no horizontal extent", evidence["quality_flag_policy"])
+        for near in (boxed(box=(0, 100, 999, 800)),
+                     boxed(box=(1, 100, 1000, 800)),
+                     region(polygon=[[0, 100], [1000, 100], [1000, 800], [0, 800]])):
+            evidence, _, _ = self.refine(scene(near), [self.mask])
+            self.assertEqual(evidence["regions"][0]["quality_flags"], [])
+        evidence, _, _ = self.refine(scene(boxed(box=(0, 100, 1000, 800)),
+                                           boxed("r2", "farm_road", box=(0, 100, 1000, 800))), [self.mask])
+        self.assertEqual(evidence["regions"][0]["quality_flags"],
+                         ["full_width_box_non_localizing", "functional_overlap_unresolved"])
         gates_are_false(self, evidence)
 
     def test_image_frame_edges_are_counted_separately_and_not_distance_targets(self):

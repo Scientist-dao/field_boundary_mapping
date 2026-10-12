@@ -286,6 +286,13 @@ def region_geometry_kind(region):
     return "vlm_box" if "box" in region else "vlm_polygon"
 
 
+def full_width_box(region):
+    """Audit predicate only: a box spanning the whole 0..1000 width localizes
+    no horizontal extent. It never changes parsing success, role or surface."""
+    box = region.get("box", ()) if isinstance(region, dict) else ()
+    return len(box) == 4 and box[0] == 0 and box[2] == 1000
+
+
 def region_corners(region):
     """Region outline as 0..1000 points, clockwise in image coordinates (y grows downward)."""
     if "box" in region:

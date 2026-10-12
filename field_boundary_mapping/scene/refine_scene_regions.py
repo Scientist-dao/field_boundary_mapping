@@ -12,8 +12,8 @@ from field_boundary_mapping.proposals.run_offline import file_hash, write_image,
 from field_boundary_mapping.proposals.run_proposals import MAX_OUTSIDE_FRACTION, REGION_PROMPTS, assess_predictions, identifier
 from field_boundary_mapping.scene.run_scene_understanding import load_scene_run
 from field_boundary_mapping.perception.sam3_local import LocalSAM3, offline_runtime
-from field_boundary_mapping.scene.scene_understanding import (GATES, _intersects, parse_scene, pixel_points, region_geometry_kind,
-                                 region_outline, scene_queries)
+from field_boundary_mapping.scene.scene_understanding import (GATES, _intersects, full_width_box, parse_scene, pixel_points,
+                                 region_geometry_kind, region_outline, scene_queries)
 from field_boundary_mapping.semantic_pipeline import load_core, mask_contours
 
 
@@ -243,6 +243,9 @@ def refine_regions(image, scene, detections, core, frame_id):
             key = "candidate_functional_" + region_id
             functional_masks[key] = candidate
             candidates[region_id] = candidate
+        quality_flags = ["polygon_clipping_edge_present"] if edge_diagnostics["polygon_cut_edge_pixels"] else []
+        if full_width_box(region):
+            quality_flags.append("full_width_box_non_localizing")
         regions.append({
             **region, "coarse_geometry": region_geometry_kind(region),
             "coarse_polygon_px": points, "coarse_polygon_pixels": int(polygon.sum()),
@@ -256,7 +259,7 @@ def refine_regions(image, scene, detections, core, frame_id):
             "candidate_functional_mask_key": key,
             "candidate_mask_contours": mask_contours(candidate) if key else [],
             "coarse_polygon_preserved": True, "segmentation_fallback_used": False,
-            "quality_flags": (["polygon_clipping_edge_present"] if edge_diagnostics["polygon_cut_edge_pixels"] else []),
+            "quality_flags": quality_flags,
             **edge_diagnostics, "extent_caveat": EXTENT_CAVEAT, **GATES,
         })
     coarse_overlap = _overlaps(coarse, (height, width))
@@ -292,7 +295,10 @@ def refine_regions(image, scene, detections, core, frame_id):
             "otherwise it is a SAM candidate edge, not a verified physical boundary."),
         "quality_flag_policy": (
             "Geometry and unresolved coarse/candidate overlap warnings only; flag presence or absence "
-            "does not establish true or false functional semantics. Distance support is not boundary verification."),
+            "does not establish true or false functional semantics. full_width_box_non_localizing records "
+            "that the region's VLM box spans the entire 0..1000 width and therefore localizes no horizontal "
+            "extent; it is an audit observation about localization, never a role or surface judgment. "
+            "Distance support is not boundary verification."),
         "boundary_refinement_performed": False,
         "geometry": {"mode": "image_only", "distance_units": "pixels"},
         "display": {"default": "refined_overlay.jpg", "role_palette_rgb": ROLE_PALETTE,
